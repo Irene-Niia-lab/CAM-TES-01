@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Candidate } from '../types';
-import { downloadAveragedReportHtml } from '../utils/exportUtils';
-import { BarChart3, TrendingUp, Users, Award, Calculator, Hash, FileDown, MessageSquareText, ChevronDown, ChevronUp, User, Tag, Building2 } from 'lucide-react';
+import { downloadAveragedReportHtml, exportToExcel } from '../utils/exportUtils';
+import { BarChart3, TrendingUp, Users, Award, Calculator, Hash, FileDown, MessageSquareText, ChevronDown, ChevronUp, User, Tag, Building2, FileSpreadsheet } from 'lucide-react';
 
 interface StatisticsViewProps {
   candidates: Candidate[];
@@ -16,7 +16,7 @@ interface GroupData {
 }
 
 const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
-  // 存储管理员编辑后的最终反馈和基础信息
+  // 存储管理员/用户编辑后的最终反馈和基础信息
   const [editedFeedbacks, setEditedFeedbacks] = useState<Record<string, string>>({});
   const [editedNames, setEditedNames] = useState<Record<string, string>>({});
   const [editedEnNames, setEditedEnNames] = useState<Record<string, string>>({});
@@ -26,9 +26,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
 
   // 核心逻辑：按“组号-组内序号”进行分组聚合
   const aggregatedData = candidates.reduce((acc, c) => {
-    const group = c.group || '?';
-    const index = c.groupIndex || '?';
-    const idCode = `${group.padStart(2, '0')}-${index.padStart(2, '0')}`;
+    const group = (c.group || '').padStart(2, '0');
+    const index = (c.groupIndex || '').padStart(2, '0');
+    const idCode = `${group}-${index}`;
     
     if (!acc[idCode]) {
       acc[idCode] = {
@@ -92,9 +92,9 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
     const avgTotal = (totalSum / group.records.length).toFixed(1);
 
     // 3. 获取合并后的教学环节
-    const allStages = Array.from(new Set(group.records.flatMap(r => r.selectedStages)));
+    const allStages = Array.from(new Set(group.records.flatMap(r => r.selectedStages || [])));
 
-    // 4. 调用导出（使用管理员修正后的姓名、机构等信息）
+    // 4. 调用导出
     downloadAveragedReportHtml(
       group.idCode,
       editedNames[group.idCode] || group.name,
@@ -116,7 +116,28 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
     : '0';
 
   return (
-    <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="h-full flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
+      {/* 顶部标题与一键导出按钮 */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-blue-600 rounded-xl text-white">
+            <BarChart3 className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-black text-slate-800 tracking-tight">成绩汇总统计 & 学术报告中心</h2>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Academic Summary Center</p>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => exportToExcel(candidates)}
+          className="w-full md:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-emerald-600 text-white rounded-2xl font-black text-lg hover:bg-emerald-700 transition-all shadow-xl shadow-emerald-100 active:scale-95 group"
+        >
+          <FileSpreadsheet className="w-6 h-6 group-hover:rotate-12 transition-transform" />
+          一键导出全员成绩汇总表
+        </button>
+      </div>
+
       {/* 统计概览卡片 */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-4">
@@ -161,11 +182,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
 
       {/* 详细统计表 */}
       <div className="bg-white p-8 rounded-[2.5rem] border border-slate-200 shadow-sm flex-1 overflow-hidden flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
-          <BarChart3 className="w-6 h-6 text-blue-600" />
-          <h3 className="text-xl font-black text-slate-800">成绩汇总统计 & 学术报告中心</h3>
-        </div>
-
         <div className="flex-1 overflow-y-auto custom-scrollbar border border-slate-50 rounded-2xl">
           <table className="w-full text-left">
             <thead className="sticky top-0 bg-slate-50 z-20">
@@ -246,11 +262,11 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
                           <td colSpan={4} className="px-8 py-6">
                             <div className="bg-white p-8 rounded-3xl border border-blue-100 shadow-xl space-y-8 animate-in slide-in-from-top-2 duration-300">
                               
-                              {/* 1. 基础信息修正区 */}
+                              {/* 基础信息修正区 */}
                               <div className="space-y-4">
                                 <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                                   <User className="w-4 h-4 text-blue-500" />
-                                  考生基础资料修正 (用于修正评委录入错误)
+                                  考生基础资料修正 (用于修正录入错误)
                                 </label>
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   <div className="space-y-1.5">
@@ -292,12 +308,12 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
                                 </div>
                               </div>
 
-                              {/* 2. 反馈建议编辑区 */}
+                              {/* 反馈建议编辑区 */}
                               <div className="space-y-4 pt-4 border-t border-slate-50">
                                 <div className="flex justify-between items-center">
                                   <label className="text-xs font-black text-blue-600 uppercase tracking-widest flex items-center gap-2">
                                     <MessageSquareText className="w-4 h-4" />
-                                    管理员终审建议编辑 (可合并修改多位评委评语)
+                                    汇总终审建议编辑
                                   </label>
                                   <span className="text-[10px] font-bold text-slate-400 italic">
                                     * 该反馈将出现在最终导出的 HTML 报告中
@@ -310,7 +326,6 @@ const StatisticsView: React.FC<StatisticsViewProps> = ({ candidates }) => {
                                   placeholder="输入汇总后的最终评估反馈..."
                                 />
                               </div>
-
                             </div>
                           </td>
                         </tr>

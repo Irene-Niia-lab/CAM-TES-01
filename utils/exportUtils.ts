@@ -3,19 +3,28 @@ import * as XLSX from 'xlsx';
 import { Candidate } from '../types';
 
 export const generateFilename = (c: Candidate) => {
-  return `${c.group || '?'}-${c.groupIndex || '?'}-${c.name || '未命名'}`;
+  const group = (c.group || '').padStart(2, '0');
+  const index = (c.groupIndex || '').padStart(2, '0');
+  return `${group}-${index}-${c.name || '未命名'}`;
 };
 
 export const exportToExcel = (candidates: Candidate[]) => {
-  const data = candidates.map(c => ({
-    "识别码": generateFilename(c),
+  // 按识别码排序：组号优先，组内序号次之
+  const sortedCandidates = [...candidates].sort((a, b) => {
+    const idA = `${(a.group || '').padStart(3, '0')}-${(a.groupIndex || '').padStart(3, '0')}`;
+    const idB = `${(b.group || '').padStart(3, '0')}-${(b.groupIndex || '').padStart(3, '0')}`;
+    return idA.localeCompare(idB, undefined, { numeric: true });
+  });
+
+  const data = sortedCandidates.map(c => ({
+    "识别码": `${(c.group || '').padStart(2, '0')}-${(c.groupIndex || '').padStart(2, '0')}`,
     "小组": c.group,
     "组内编号": c.groupIndex,
     "姓名": c.name,
     "英文名": c.enName,
     "机构": c.organization,
     "考核类别": c.category,
-    "已选教学环节": c.selectedStages.join(', '),
+    "已选教学环节": (c.selectedStages || []).join(', '),
     "1.1 得分": c.scores["1_1"] || 0,
     "1.2 得分": c.scores["1_2"] || 0,
     "2.1 得分": c.scores["2_1"] || 0,
@@ -25,13 +34,24 @@ export const exportToExcel = (candidates: Candidate[]) => {
     "3.2 得分": c.scores["3_2"] || 0,
     "总分": c.totalScore,
     "反馈意见": c.feedback,
+    "评委": c.judgeUsername || '未知',
     "最后更新": c.lastUpdated
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(data);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "评分统计");
-  XLSX.writeFile(workbook, `考核评分汇总_${new Date().toLocaleDateString()}.xlsx`);
+  XLSX.utils.book_append_sheet(workbook, worksheet, "评分全汇总");
+  
+  // 设置列宽
+  const wscols = [
+    {wch: 15}, {wch: 8}, {wch: 10}, {wch: 12}, {wch: 15}, 
+    {wch: 20}, {wch: 10}, {wch: 30}, {wch: 10}, {wch: 10},
+    {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10}, {wch: 10},
+    {wch: 8}, {wch: 50}, {wch: 12}, {wch: 20}
+  ];
+  worksheet['!cols'] = wscols;
+
+  XLSX.writeFile(workbook, `教师考核评分总汇总_${new Date().toLocaleDateString()}.xlsx`);
 };
 
 export const downloadCandidateHtml = (c: Candidate) => {
@@ -138,8 +158,6 @@ const generateTemplateHtml = (
                 align-items: center;
             }
             .container { max-width: 800px; width: 100%; }
-            
-            /* Header Styling */
             header { text-align: left; border-bottom: 2px solid ${primaryColor}; padding-bottom: 30px; margin-bottom: 50px; position: relative; }
             .badge { 
                 position: absolute; right: 0; top: 0;
@@ -149,8 +167,6 @@ const generateTemplateHtml = (
             }
             h1 { margin: 0; font-size: 28px; font-weight: 900; color: ${primaryColor}; letter-spacing: -0.02em; }
             .company { font-size: 14px; font-weight: 700; color: #94a3b8; margin-top: 5px; letter-spacing: 0.2em; text-transform: uppercase; }
-
-            /* Profile Info Grid */
             .profile-card { 
                 display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; margin-bottom: 60px;
                 background: #f8fafc; padding: 40px; border-radius: 12px;
@@ -160,39 +176,22 @@ const generateTemplateHtml = (
             .profile-value { font-size: 16px; font-weight: 700; color: ${primaryColor}; }
             .full-width { grid-column: span 3; }
             .identity-code { grid-column: span 3; font-size: 24px; font-weight: 900; color: ${accentColor}; border-bottom: 1px solid #e2e8f0; padding-bottom: 15px; margin-bottom: 10px; }
-
-            /* Table Styling */
             table { width: 100%; border-collapse: collapse; margin-bottom: 60px; }
             th { text-align: left; padding: 15px 0; border-bottom: 2px solid ${primaryColor}; font-size: 12px; font-weight: 800; color: ${primaryColor}; text-transform: uppercase; letter-spacing: 0.1em; }
             td { padding: 20px 0; border-bottom: 1px solid ${borderColor}; font-size: 15px; }
             .score-cell { text-align: right; font-weight: 700; color: ${primaryColor}; }
             .max-score { color: #94a3b8; font-weight: 400; font-size: 13px; margin-left: 5px; }
-            
-            .total-row td { 
-                border-bottom: none; padding-top: 40px;
-            }
+            .total-row td { border-bottom: none; padding-top: 40px; }
             .total-label { font-size: 18px; font-weight: 900; color: ${primaryColor}; }
-            .total-value-container { 
-                text-align: right; 
-                background: ${accentColor}; color: #fff;
-                padding: 20px 30px; border-radius: 8px;
-            }
+            .total-value-container { text-align: right; background: ${accentColor}; color: #fff; padding: 20px 30px; border-radius: 8px; }
             .total-value { font-size: 36px; font-weight: 900; line-height: 1; }
             .total-max { font-size: 14px; opacity: 0.8; font-weight: 600; margin-left: 5px; }
-
-            /* Feedback Section */
             .feedback-section { margin-top: 20px; }
             .section-title { font-size: 12px; font-weight: 800; color: ${accentColor}; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 25px; display: flex; align-items: center; }
             .section-title::after { content: ""; flex: 1; height: 1px; background: #e2e8f0; margin-left: 20px; }
-            .feedback-content { 
-                font-size: 16px; color: #475569; line-height: 1.8; white-space: pre-wrap;
-                padding: 0 0 0 25px; border-left: 3px solid #e2e8f0;
-            }
-
-            /* Footer */
+            .feedback-content { font-size: 16px; color: #475569; line-height: 1.8; white-space: pre-wrap; padding: 0 0 0 25px; border-left: 3px solid #e2e8f0; }
             footer { margin-top: 100px; padding-top: 40px; border-top: 1px solid #e2e8f0; width: 100%; text-align: center; font-size: 12px; color: #94a3b8; }
             .footer-copyright { font-weight: 700; color: #64748b; margin-bottom: 5px; }
-            
             @media print {
                 body { padding: 0; }
                 .profile-card { background: #f8fafc !important; -webkit-print-color-adjust: exact; }
@@ -207,7 +206,6 @@ const generateTemplateHtml = (
                 <h1>${title}</h1>
                 <div class="company">CAMPUPRO ENGLISH</div>
             </header>
-
             <div class="profile-card">
                 <div class="identity-code">ID: ${idCode}</div>
                 <div class="profile-item">
@@ -236,10 +234,9 @@ const generateTemplateHtml = (
                 </div>
                 <div class="profile-item full-width">
                     <span class="profile-label">Teaching Stages</span>
-                    <span class="profile-value">${stages.join('  •  ') || 'Standard Process'}</span>
+                    <span class="profile-value">${(stages || []).join('  •  ') || 'Standard Process'}</span>
                 </div>
             </div>
-
             <table>
                 <thead>
                     <tr>
@@ -265,12 +262,10 @@ const generateTemplateHtml = (
                     </tr>
                 </tbody>
             </table>
-
             <div class="feedback-section">
                 <div class="section-title">Academic Feedback & Suggestions</div>
                 <div class="feedback-content">${feedback || 'Candidate performed within expectations. Specific areas for growth were not noted during this session.'}</div>
             </div>
-
             <footer>
                 <div class="footer-copyright">© CAMPUPRO ENGLISH ACADEMY</div>
                 <div>Generated on ${time}  |  Official Assessment Document</div>

@@ -59,7 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <div className={`p-4 rounded-2xl border mb-6 transition-all ${syncConfig.enabled ? 'bg-emerald-50 border-emerald-100' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <Cloud className={`w-4 h-4 ${syncConfig.enabled ? 'text-emerald-600' : 'text-slate-400'}`} />
+              < Cloud className={`w-4 h-4 ${syncConfig.enabled ? 'text-emerald-600' : 'text-slate-400'}`} />
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">云同步状态</span>
             </div>
             {syncConfig.enabled && (
@@ -129,16 +129,17 @@ const Sidebar: React.FC<SidebarProps> = ({
       
       <div className="p-6 border-t border-slate-100 bg-slate-50/50">
         <div className="flex flex-col gap-2">
+          {/* 成绩汇总统计向所有用户开放 */}
+          <button onClick={onOpenStats} className={`flex items-center gap-3 w-full p-3 rounded-2xl font-black text-sm transition-all ${isStatsViewOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+            <BarChart2 className="w-5 h-5" /> 成绩汇总统计
+          </button>
+          
           {session.user?.role === UserRole.ADMIN && (
-            <>
-              <button onClick={onOpenStats} className={`flex items-center gap-3 w-full p-3 rounded-2xl font-black text-sm transition-all ${isStatsViewOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                <BarChart2 className="w-5 h-5" /> 成绩汇总统计
-              </button>
-              <button onClick={onOpenAdmin} className={`flex items-center gap-3 w-full p-3 rounded-2xl font-black text-sm transition-all ${isAdminViewOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
-                <Settings className="w-5 h-5" /> 系统与同步设置
-              </button>
-            </>
+            <button onClick={onOpenAdmin} className={`flex items-center gap-3 w-full p-3 rounded-2xl font-black text-sm transition-all ${isAdminViewOpen ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}>
+              <Settings className="w-5 h-5" /> 系统与同步设置
+            </button>
           )}
+          
           <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mt-2">
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white ${session.user?.role === UserRole.ADMIN ? 'bg-amber-500' : 'bg-indigo-600'}`}>
